@@ -1,0 +1,19 @@
+This is a system validation script, designed to assist with running saved
+copies of CPAN package test suites.  Right now, this is mainly meant to serve
+as a proof-of-concept with Fedora, which is experimenting with packaging the
+test suites (as run under the Fedora buildsystem) in RPM subpackages in F-13+.
+
+e.g.
+
+    Class::MOP is packaged and delivered in the perl-Class-MOP RPM
+    CMOP's test suite is delivered in the perl-Class-MOP-tests RPM
+    CMOP's test suite is stored under /usr/libexec/Class-MOP/
+
+This is very basic, very preliminary right now.  Few "-tests" subpackages
+exist at this point, how they're packaged and delivered will almost certainly
+be changed as well progress with this.
+
+Feedback, patches, all very welcome; please use the github issues function to
+report any problems, suggestions, or RFE's.
+
+Chris Weyl <cweyl@alumni.drew.edu>
