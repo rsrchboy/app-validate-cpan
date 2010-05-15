@@ -7,7 +7,7 @@ e.g.
 
     Class::MOP is packaged and delivered in the perl-Class-MOP RPM
     CMOP's test suite is delivered in the perl-Class-MOP-tests RPM
-    CMOP's test suite is stored under /usr/libexec/Class-MOP/
+    CMOP's test suite is stored under /usr/libexec/perl5-tests/Class-MOP/
 
 This is very basic, very preliminary right now.  Few "-tests" subpackages
 exist at this point, how they're packaged and delivered will almost certainly
