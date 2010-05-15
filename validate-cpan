@@ -7,6 +7,29 @@ use common::sense;
 use autodie;
 use opts;
 
+{
+    # we should probably pick something a little less Fedora-centric
+    package App::Prove::State::Fedora;
+
+    use common::sense;
+    use namespace::autoclean;
+    use Class::Method::Modifiers;
+    use base 'App::Prove::State';
+
+    my @blacklisted = (
+        # a base set of usually "release-candidate" or "author" tests we
+        # should skip
+        qr/kwalitee/i, qr/pod\.t$/i, qr/pod-coverage\.t$/i,
+    );
+
+    around get_tests => sub {
+        my ($orig, $self) = (shift, shift);
+
+        # filter out anything matching a blacklist rule
+        return grep { not $_ ~~ @blacklisted } $self->$orig(@_);
+    };
+}
+
 use App::Prove;
 use CPAN::Easy;
 use CPAN::MetaMuncher;
@@ -39,6 +62,8 @@ my %blacklisted = map { $_ => 1 } qw{ perl };
 for my $module (@ARGV) {
 
     my $test_sub = generate_test_sub($module);
+
+    print "\nCalculated all tests for $module; executing...\n\n";
     $test_sub->();
 }
 
@@ -82,6 +107,7 @@ sub generate_test_sub {
         say "Running tests for $distname from $testrpm:";
         local $CWD = "$module_test_root";
         my $prove = App::Prove->new;
+        $prove->state_class('App::Prove::State::Fedora');
         $prove->process_args('-r');
         $prove->run;
     };
