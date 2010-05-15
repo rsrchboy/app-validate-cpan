@@ -1,0 +1,107 @@
+#!/usr/bin/env perl
+
+# Copyright 2010 Chris Weyl <cweyl@alumni.drew.edu>
+# This script is under the GPLv2+ or LGPLv2+, at your choice.
+
+use common::sense;
+use autodie;
+use opts;
+
+use App::Prove;
+use CPAN::Easy;
+use CPAN::MetaMuncher;
+use File::chdir;
+use IO::Prompt;
+use Path::Class;
+use RPM2 0.67;
+use Text::Format;
+
+our $VERSION = '0.001';
+
+opts::coerce 'File' => 'Str' => sub { file @_ };
+opts::coerce 'Dir'  => 'Str' => sub { dir @_  };
+
+opts
+    my $tests_root => { isa => 'Dir',  default => '/usr/libexec/perl5-tests/', alias => 'tests-root|root' },
+    my $recurse    => { isa => 'Bool', default => 0 },
+    ;
+
+# this is a super simple protoype...  before fleshing everything out full-on
+# MooseX::App::Cmd style, let's make sure we know what we're doing :)
+
+say "$0 version $VERSION\n"; # not an error :)
+
+CPAN::Easy->verbose(0);
+my $rpmdb = RPM2->open_rpm_db;
+my %seen;
+my %blacklisted = map { $_ => 1 } qw{ perl };
+
+for my $module (@ARGV) {
+
+    my $test_sub = generate_test_sub($module);
+    $test_sub->();
+}
+
+sub generate_test_sub {
+    my $module = shift @_;
+
+    return sub { say "$module already tested." } if $seen{$module};
+    return sub { say "$module blacklisted." } if $blacklisted{$module};
+
+    $seen{$module} = 1;
+
+    say "Retrieving distribution information on $module";
+    my $info = CPAN::Easy->get_info($module);
+
+    my $distname = $info->{distinfo}->dist;
+    my ($rpm, $testrpm) = (_build_rpm_pkg_name($distname), _build_rpm_test_pkg_name($distname));
+
+    # FIXME we should check to make sure the rpm is installed as well (though
+    # I can't imagine how it wouldn't be, barring prolific use of --nodeps)
+
+    unless ($rpmdb->find_by_name($testrpm)) {
+
+        # no tests, just return a little blurb about it.
+        return sub {
+            print "\n";
+            say Text::Format->new({ firstIndent => 0 })->format(
+                "Module $module is contained within $distname, which is "
+                . "delivered by the $rpm RPM package.  Tests for this "
+                . "package should be located in the $testrpm RPM, but it is "
+                . "not installed.  We suggest you try yum installing it."
+            );
+        }
+    }
+
+    # here's where we'd bomb, offer to pull down the test suite, etc, but for
+    # now, we'll just build it out to run from the packaged tests, etc
+
+    my $module_test_root = dir $tests_root, $distname;
+    my $module_test_sub = sub {
+
+        say "Running tests for $distname from $testrpm:";
+        local $CWD = "$module_test_root";
+        my $prove = App::Prove->new;
+        $prove->process_args('-r');
+        $prove->run;
+    };
+
+    return $module_test_sub unless $recurse;
+
+    my $meta = CPAN::MetaMuncher->new(module => $module);
+    my @tests;
+
+    push @tests, generate_test_sub($_) for $meta->requires;
+
+    return sub {
+
+        # run our tests, then our dependents tests
+        $module_test_sub->();
+        $_->() for @tests;
+    };
+}
+
+sub _build_rpm_pkg_name      { 'perl-' . shift            }
+sub _build_rpm_test_pkg_name { 'perl-' . shift . '-tests' }
+
+
