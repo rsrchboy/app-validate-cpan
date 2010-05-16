@@ -19,7 +19,8 @@ use opts;
     my @blacklisted = (
         # a base set of usually "release-candidate" or "author" tests we
         # should skip
-        qr/kwalitee/i, qr/pod\.t$/i, qr/pod-coverage\.t$/i,
+        qr/kwalitee/i,
+        qr/pod\.t$/i, qr/pod-syntax\.t$/i, qr/pod-coverage\.t$/i,
     );
 
     around get_tests => sub {
@@ -31,8 +32,8 @@ use opts;
 }
 
 use App::Prove;
-use CPAN::Easy;
-use CPAN::MetaMuncher;
+use CPAN::Easy          0.001;
+use CPAN::MetaMuncher   0.007_02;
 use File::chdir;
 use IO::Prompt;
 use Path::Class;
